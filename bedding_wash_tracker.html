@@ -239,6 +239,19 @@
 
 <script>
 const STORAGE_KEY = 'bedding-wash-items';
+
+const storage = (window.storage && typeof window.storage.get === 'function')
+  ? window.storage
+  : {
+      async get(key){
+        return { key, value: localStorage.getItem(key), shared: false };
+      },
+      async set(key, value){
+        localStorage.setItem(key, value);
+        return { key, value, shared: false };
+      }
+    };
+
 const DEFAULT_ITEMS = [
   '主臥被單','Mia的棉被','Jim的棉被','Jim的毛毯',
   'Will的被單','Will的棉被','Ian的被單','Ian的厚棉被','Ian的薄被'
@@ -270,7 +283,7 @@ function daysBetween(a, b){
 
 async function loadItems(){
   try{
-    const res = await window.storage.get(STORAGE_KEY, false);
+    const res = await storage.get(STORAGE_KEY, false);
     if(res && res.value){
       items = JSON.parse(res.value);
       sortItems();
@@ -283,7 +296,7 @@ async function loadItems(){
 
 async function saveItems(){
   try{
-    await window.storage.set(STORAGE_KEY, JSON.stringify(items), false);
+    await storage.set(STORAGE_KEY, JSON.stringify(items), false);
   }catch(e){
     console.error('儲存失敗', e);
   }
