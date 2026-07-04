@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>資金紀錄</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3248;
+    --accent: #6c8eff;
+    --accent-dim: rgba(108,142,255,0.12);
+    --green: #3ecf8e;
+    --green-dim: rgba(62,207,142,0.12);
+    --red: #f66;
+    --red-dim: rgba(255,102,102,0.12);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --text: #e8eaf0;
+    --text-muted: #6b7094;
+    --text-dim: #9ba3c4;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --font-sans: 'Noto Sans TC', 'Inter', sans-serif;
+    --font-mono: 'Inter', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  .logo { font-size: 15px; font-weight: 700; letter-spacing: .04em; color: var(--accent); }
+  .logo span { color: var(--text-muted); font-weight: 400; }
+
+  nav { display: flex; gap: 4px; }
+  nav button {
+    background: none; border: none; color: var(--text-muted);
+    padding: 6px 14px; border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 13px; font-family: var(--font-sans);
+    transition: all .15s;
+  }
+  nav button:hover { color: var(--text); background: var(--surface2); }
+  nav button.active { color: var(--accent); background: var(--accent-dim); }
+
+  main { flex: 1; padding: 24px; max-width: 960px; margin: 0 auto; width: 100%; }
+
+  /* ── Section ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: var(--text); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+  /* ── Account Cards ── */
+  .account-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .account-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .account-card.salary::before { background: var(--accent); }
+  .account-card.invest::before { background: var(--green); }
+  .account-card.special::before { background: var(--amber); }
+
+  .account-label { font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .account-balance { font-size: 26px; font-weight: 600; font-family: var(--font-mono); letter-spacing: -.02em; }
+  .account-card.salary .account-balance { color: var(--accent); }
+  .account-card.invest .account-balance { color: var(--green); }
+  .account-card.special .account-balance { color: var(--amber); }
+
+  .account-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ── Form ── */
+  .form-row { display: grid; gap: 12px; margin-bottom: 14px; }
+  .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  label { font-size: 12px; color: var(--text-dim); font-weight: 500; display: block; margin-bottom: 5px; }
+
+  input, select, textarea {
+    width: 100%; padding: 9px 12px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: var(--font-sans); font-size: 14px;
+    outline: none; transition: border .15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 60px; }
+
+  select option { background: var(--surface2); }
+
+  .btn {
+    padding: 9px 20px; border: none; border-radius: var(--radius-sm);
+    font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: .9; }
+  .btn-ghost { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text-muted); }
+  .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid transparent; }
+  .btn-danger:hover { border-color: var(--red); }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 10px 12px;
+    font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-muted); border-bottom: 1px solid var(--border);
+  }
+  td { padding: 11px 12px; border-bottom: 1px solid rgba(46,50,72,.5); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 500;
+  }
+  .tag-income { background: var(--green-dim); color: var(--green); }
+  .tag-expense { background: var(--red-dim); color: var(--red); }
+  .tag-transfer { background: var(--accent-dim); color: var(--accent); }
+  .tag-monthly { background: var(--surface2); color: var(--text-dim); }
+  .tag-annual { background: var(--amber-dim); color: var(--amber); }
+
+  /* ── Amount ── */
+  .amount-pos { color: var(--green); font-family: var(--font-mono); }
+  .amount-neg { color: var(--red); font-family: var(--font-mono); }
+  .amount-neu { color: var(--accent); font-family: var(--font-mono); }
+
+  /* ── Budget bar ── */
+  .budget-item { margin-bottom: 14px; }
+  .budget-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .budget-name { font-size: 13px; font-weight: 500; }
+  .budget-nums { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+  .budget-bar { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .budget-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+  .budget-fill.ok { background: var(--green); }
+  .budget-fill.warn { background: var(--amber); }
+  .budget-fill.over { background: var(--red); }
+  .budget-note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ── Summary ── */
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { font-size: 13px; color: var(--text-dim); }
+  .stat-val { font-size: 15px; font-weight: 600; font-family: var(--font-mono); }
+
+  /* ── Empty ── */
+  .empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
+
+  /* ── Modal ── */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; display: none;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px; width: 480px; max-width: 95vw;
+  }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 8px 16px; background: none; border: none; cursor: pointer;
+    font-family: var(--font-sans); font-size: 13px; color: var(--text-muted);
+    border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+  /* ── Filter ── */
+  .filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-row select, .filter-row input { width: auto; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 12px 18px; border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text); z-index: 999;
+    opacity: 0; transform: translateY(8px);
+    transition: all .2s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  @media (max-width: 600px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .form-row.cols-2, .form-row.cols-3 { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    header { padding: 14px 16px; }
+    .logo span { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">資金紀錄 <span>· 大額追蹤</span></div>
+    <nav>
+      <button class="active" onclick="showSection('overview')">總覽</button>
+      <button onclick="showSection('transactions')">紀錄</button>
+      <button onclick="showSection('budget')">預算</button>
+      <button onclick="showSection('settings')">設定</button>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- ── 總覽 ── -->
+    <div class="section active" id="section-overview">
+      <div class="grid-3" id="account-cards"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="section-title-row" style="margin-bottom:16px">
+            <h2 style="margin:0;font-size:15px">本月預算進度</h2>
+            <span id="current-month-label" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+          <div id="budget-overview"></div>
+        </div>
+        <div class="card">
+          <h2 style="font-size:15px;margin-bottom:16px">本月摘要</h2>
+          <div id="monthly-summary"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title-row">
+          <h2 style="margin:0;font-size:15px">最近紀錄</h2>
+          <button class="btn btn-ghost" onclick="showSection('transactions')">全部 →</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>日期</th><th>類型</th><th>帳戶</th><th>類別</th><th>金額</th><th>備註</th>
+          </tr></thead>
+          <tbody id="recent-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 紀錄 ── -->
+    <div class="section" id="section-transactions">
+      <div class="section-title-row">
+        <h2>資金紀錄</h2>
+        <button class="btn btn-primary" onclick="openAddTx()">＋ 新增</button>
+      </div>
+
+      <div class="filter-row">
+        <select id="filter-type" onchange="renderTransactions()">
+          <option value="">全部類型</option>
+          <option value="income">收入</option>
+          <option value="expense">支出</option>
+          <option value="transfer">轉帳</option>
+        </select>
+        <select id="filter-account" onchange="renderTransactions()">
+          <option value="">全部帳戶</option>
+        </select>
+        <select id="filter-month" onchange="renderTransactions()">
+          <option value="">全部月份</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>日期</th><th>類型</th><th>帳戶</th><th>類別</th><th>金額</th><th>備註</th><th></th>
+          </tr></thead>
+          <tbody id="tx-table"></tbody></table>
+        </div>
+        <div id="tx-empty" class="empty" style="display:none">尚無紀錄</div>
+      </div>
+    </div>
+
+    <!-- ── 預算 ── -->
+    <div class="section" id="section-budget">
+      <div class="section-title-row">
+        <h2>預算管理</h2>
+        <button class="btn btn-primary" onclick="openAddBudget()">＋ 新增預算</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchBudgetTab('monthly', this)">月預算</button>
+        <button class="tab" onclick="switchBudgetTab('annual', this)">年度預算</button>
+      </div>
+
+      <div id="budget-monthly-list"></div>
+      <div id="budget-annual-list" style="display:none"></div>
+    </div>
+
+    <!-- ── 設定 ── -->
+    <div class="section" id="section-settings">
+      <h2>帳戶設定</h2>
+      <div class="card" id="account-settings-list"></div>
+      <div class="divider"></div>
+      <div class="card">
+        <h2 style="font-size:15px;margin-bottom:16px">類別管理</h2>
+        <div id="category-list"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input id="new-category" placeholder="新增類別…" style="flex:1">
+          <button class="btn btn-ghost" onclick="addCategory()">新增</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="card" style="border-color:var(--red);background:var(--red-dim)">
+        <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px">匯出 / 清除資料</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="exportData()">📥 匯出 JSON</button>
+          <button class="btn btn-danger" onclick="clearData()">清除所有資料</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── 新增/編輯 交易 Modal ── -->
+<div class="modal-bg" id="modal-tx">
+  <div class="modal">
+    <h3 id="modal-tx-title">新增紀錄</h3>
+    <div class="form-row cols-2">
+      <div><label>類型</label>
+        <select id="tx-type" onchange="onTxTypeChange()">
+          <option value="income">收入</option>
+          <option value="expense">支出</option>
+          <option value="transfer">帳戶轉帳</option>
+        </select>
+      </div>
+      <div><label>日期</label><input type="date" id="tx-date"></div>
+    </div>
+    <div class="form-row cols-2">
+      <div id="tx-account-wrap"><label>帳戶</label>
+        <select id="tx-account"></select>
+      </div>
+      <div id="tx-to-wrap" style="display:none"><label>轉入帳戶</label>
+        <select id="tx-to-account"></select>
+      </div>
+      <div><label>金額（元）</label><input type="number" id="tx-amount" placeholder="5000"></div>
+    </div>
+    <div class="form-row">
+      <div><label>類別</label>
+        <select id="tx-category"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>備註</label><input type="text" id="tx-memo" placeholder="選填"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeTxModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTx()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 新增/編輯 預算 Modal ── -->
+<div class="modal-bg" id="modal-budget">
+  <div class="modal">
+    <h3 id="modal-budget-title">新增預算</h3>
+    <div class="form-row cols-2">
+      <div><label>類別</label>
+        <select id="budget-category"></select>
+      </div>
+      <div><label>週期</label>
+        <select id="budget-period">
+          <option value="monthly">月預算</option>
+          <option value="annual">年度預算</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>預算金額（元）</label><input type="number" id="budget-amount" placeholder="10000"></div>
+    </div>
+    <div class="form-row">
+      <div><label>備註（例：車險、所得稅）</label><input type="text" id="budget-note" placeholder="選填"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeBudgetModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveBudget()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────
+const DEFAULT_STATE = {
+  accounts: [
+    { id: 'salary',  name: '薪資帳戶',   balance: 0, color: 'salary'  },
+    { id: 'invest',  name: '投資帳戶',   balance: 0, color: 'invest'  },
+    { id: 'special', name: '特殊用途帳戶', balance: 0, color: 'special' },
+  ],
+  categories: ['薪資', '獎金', '投資收益', '保費', '稅款', '大型消費', '帳戶調度', '其他'],
+  transactions: [],
+  budgets: [],
+};
+
+let state = JSON.parse(localStorage.getItem('finance_v1') || 'null') || DEFAULT_STATE;
+
+function save() {
+  localStorage.setItem('finance_v1', JSON.stringify(state));
+}
+
+// ────────────────────────────────────────────────
+// UTILS
+// ────────────────────────────────────────────────
+function fmt(n) {
+  return '$' + Math.abs(n).toLocaleString('zh-TW');
+}
+function today() {
+  return new Date().toISOString().slice(0,10);
+}
+function thisMonth() {
+  return new Date().toISOString().slice(0,7);
+}
+function monthOf(dateStr) {
+  return dateStr.slice(0,7);
+}
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ────────────────────────────────────────────────
+// NAV
+// ────────────────────────────────────────────────
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  document.querySelectorAll('nav button').forEach((b, i) => {
+    b.classList.toggle('active', ['overview','transactions','budget','settings'][i] === id);
+  });
+  if (id === 'overview') renderOverview();
+  if (id === 'transactions') renderTransactions();
+  if (id === 'budget') renderBudget();
+  if (id === 'settings') renderSettings();
+}
+
+// ────────────────────────────────────────────────
+// OVERVIEW
+// ────────────────────────────────────────────────
+function renderOverview() {
+  // Account cards
+  const wrap = document.getElementById('account-cards');
+  wrap.innerHTML = state.accounts.map(a => `
+    <div class="account-card ${a.color}">
+      <div class="account-label">${a.name}</div>
+      <div class="account-balance">${fmt(a.balance)}</div>
+      <div class="account-sub">目前餘額</div>
+    </div>
+  `).join('');
+
+  // Month label
+  const now = new Date();
+  document.getElementById('current-month-label').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月`;
+
+  // Budget overview
+  renderBudgetOverview();
+
+  // Monthly summary
+  renderMonthlySummary();
+
+  // Recent 5
+  const recent = [...state.transactions]
+    .sort((a,b) => b.date.localeCompare(a.date)).slice(0,5);
+  renderTxRows(document.getElementById('recent-table'), recent, false);
+  if (!recent.length) {
+    document.getElementById('recent-table').innerHTML =
+      '<tr><td colspan="6" class="empty">尚無紀錄</td></tr>';
+  }
+}
+
+function renderBudgetOverview() {
+  const m = thisMonth();
+  const budgetWrap = document.getElementById('budget-overview');
+  if (!state.budgets.length) {
+    budgetWrap.innerHTML = '<div class="empty" style="padding:16px 0">尚未設定預算</div>'; return;
+  }
+
+  const html = state.budgets.filter(b => b.period === 'monthly').map(b => {
+    const spent = state.transactions
+      .filter(t => t.type === 'expense' && t.category === b.category && monthOf(t.date) === m)
+      .reduce((s, t) => s + t.amount, 0);
+    const pct = b.amount ? Math.min(spent / b.amount * 100, 100) : 0;
+    const cls = pct < 75 ? 'ok' : pct < 100 ? 'warn' : 'over';
+    return `<div class="budget-item">
+      <div class="budget-header">
+        <span class="budget-name">${b.category}</span>
+        <span class="budget-nums">${fmt(spent)} / ${fmt(b.amount)}</span>
+      </div>
+      <div class="budget-bar"><div class="budget-fill ${cls}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  budgetWrap.innerHTML = html || '<div class="empty" style="padding:16px 0">尚無月預算</div>';
+}
+
+function renderMonthlySummary() {
+  const m = thisMonth();
+  const txs = state.transactions.filter(t => monthOf(t.date) === m);
+  const income = txs.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+  const expense = txs.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+  const totalBal = state.accounts.reduce((s,a) => s+a.balance, 0);
+
+  document.getElementById('monthly-summary').innerHTML = `
+    <div class="stat-row"><span class="stat-label">本月收入</span><span class="stat-val amount-pos">＋${fmt(income)}</span></div>
+    <div class="stat-row"><span class="stat-label">本月支出</span><span class="stat-val amount-neg">－${fmt(expense)}</span></div>
+    <div class="stat-row"><span class="stat-label">本月淨額</span><span class="stat-val ${income-expense>=0?'amount-pos':'amount-neg'}">${income-expense>=0?'＋':'－'}${fmt(income-expense)}</span></div>
+    <div class="stat-row" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+      <span class="stat-label" style="font-weight:600">三帳戶總計</span>
+      <span class="stat-val">${fmt(totalBal)}</span>
+    </div>
+  `;
+}
+
+// ────────────────────────────────────────────────
+// TRANSACTIONS
+// ────────────────────────────────────────────────
+let editingTxId = null;
+
+function openAddTx() {
+  editingTxId = null;
+  document.getElementById('modal-tx-title').textContent = '新增紀錄';
+  document.getElementById('tx-type').value = 'expense';
+  document.getElementById('tx-date').value = today();
+  document.getElementById('tx-amount').value = '';
+  document.getElementById('tx-memo').value = '';
+  refreshTxSelects();
+  onTxTypeChange();
+  document.getElementById('modal-tx').classList.add('open');
+}
+
+function openEditTx(id) {
+  const tx = state.transactions.find(t => t.id === id);
+  if (!tx) return;
+  editingTxId = id;
+  document.getElementById('modal-tx-title').textContent = '編輯紀錄';
+  document.getElementById('tx-type').value = tx.type;
+  document.getElementById('tx-date').value = tx.date;
+  document.getElementById('tx-amount').value = tx.amount;
+  document.getElementById('tx-memo').value = tx.memo || '';
+  refreshTxSelects();
+  onTxTypeChange();
+  document.getElementById('tx-account').value = tx.account;
+  document.getElementById('tx-category').value = tx.category;
+  if (tx.type === 'transfer') document.getElementById('tx-to-account').value = tx.toAccount || '';
+  document.getElementById('modal-tx').classList.add('open');
+}
+
+function closeTxModal() {
+  document.getElementById('modal-tx').classList.remove('open');
+}
+
+function refreshTxSelects() {
+  const acSel = document.getElementById('tx-account');
+  const toSel = document.getElementById('tx-to-account');
+  [acSel, toSel].forEach(sel => {
+    sel.innerHTML = state.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  });
+  document.getElementById('tx-category').innerHTML =
+    state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function onTxTypeChange() {
+  const t = document.getElementById('tx-type').value;
+  const isTransfer = t === 'transfer';
+  document.getElementById('tx-account-wrap').querySelector('label').textContent = isTransfer ? '轉出帳戶' : '帳戶';
+  document.getElementById('tx-to-wrap').style.display = isTransfer ? '' : 'none';
+}
+
+function saveTx() {
+  const type = document.getElementById('tx-type').value;
+  const date = document.getElementById('tx-date').value;
+  const amount = parseFloat(document.getElementById('tx-amount').value);
+  const account = document.getElementById('tx-account').value;
+  const category = document.getElementById('tx-category').value;
+  const memo = document.getElementById('tx-memo').value.trim();
+  const toAccount = document.getElementById('tx-to-account').value;
+
+  if (!date || isNaN(amount) || amount < 0) { toast('請填寫日期與金額'); return; }
+
+  // Update balances: revert old if editing
+  if (editingTxId) {
+    const old = state.transactions.find(t => t.id === editingTxId);
+    if (old) revertBalance(old);
+    state.transactions = state.transactions.filter(t => t.id !== editingTxId);
+  }
+
+  const tx = { id: Date.now().toString(), type, date, amount, account, category, memo };
+  if (type === 'transfer') tx.toAccount = toAccount;
+
+  applyBalance(tx);
+  state.transactions.unshift(tx);
+  save(); closeTxModal(); toast('已儲存');
+  renderOverview(); renderTransactions();
+}
+
+function applyBalance(tx) {
+  const ac = state.accounts.find(a => a.id === tx.account);
+  if (tx.type === 'income') ac.balance += tx.amount;
+  else if (tx.type === 'expense') ac.balance -= tx.amount;
+  else if (tx.type === 'transfer') {
+    ac.balance -= tx.amount;
+    const to = state.accounts.find(a => a.id === tx.toAccount);
+    if (to) to.balance += tx.amount;
+  }
+}
+
+function revertBalance(tx) {
+  const ac = state.accounts.find(a => a.id === tx.account);
+  if (tx.type === 'income') ac.balance -= tx.amount;
+  else if (tx.type === 'expense') ac.balance += tx.amount;
+  else if (tx.type === 'transfer') {
+    ac.balance += tx.amount;
+    const to = state.accounts.find(a => a.id === tx.toAccount);
+    if (to) to.balance -= tx.amount;
+  }
+}
+
+function deleteTx(id) {
+  if (!confirm('確定刪除這筆紀錄？')) return;
+  const tx = state.transactions.find(t => t.id === id);
+  if (tx) revertBalance(tx);
+  state.transactions = state.transactions.filter(t => t.id !== id);
+  save(); toast('已刪除');
+  renderOverview(); renderTransactions();
+}
+
+function renderTransactions() {
+  // Populate filters
+  const accountSel = document.getElementById('filter-account');
+  accountSel.innerHTML = '<option value="">全部帳戶</option>' +
+    state.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+  const months = [...new Set(state.transactions.map(t => monthOf(t.date)))].sort().reverse();
+  const monthSel = document.getElementById('filter-month');
+  monthSel.innerHTML = '<option value="">全部月份</option>' +
+    months.map(m => `<option value="${m}">${m}</option>`).join('');
+
+  const fType = document.getElementById('filter-type').value;
+  const fAcc  = document.getElementById('filter-account').value;
+  const fMon  = document.getElementById('filter-month').value;
+
+  let txs = [...state.transactions].sort((a,b) => b.date.localeCompare(a.date));
+  if (fType) txs = txs.filter(t => t.type === fType);
+  if (fAcc)  txs = txs.filter(t => t.account === fAcc);
+  if (fMon)  txs = txs.filter(t => monthOf(t.date) === fMon);
+
+  const tbody = document.getElementById('tx-table');
+  renderTxRows(tbody, txs, true);
+  document.getElementById('tx-empty').style.display = txs.length ? 'none' : 'block';
+}
+
+function renderTxRows(tbody, txs, withActions) {
+  const typeLabel = { income: '收入', expense: '支出', transfer: '轉帳' };
+  const typeTag   = { income: 'tag-income', expense: 'tag-expense', transfer: 'tag-transfer' };
+  tbody.innerHTML = txs.map(tx => {
+    const ac = state.accounts.find(a => a.id === tx.account);
+    const toAc = tx.toAccount ? state.accounts.find(a => a.id === tx.toAccount) : null;
+    const amtCls = tx.type === 'income' ? 'amount-pos' : tx.type === 'expense' ? 'amount-neg' : 'amount-neu';
+    const prefix = tx.type === 'income' ? '＋' : tx.type === 'expense' ? '－' : '→';
+    const acLabel = toAc ? `${ac?.name} → ${toAc.name}` : (ac?.name || tx.account);
+    return `<tr>
+      <td>${tx.date}</td>
+      <td><span class="tag ${typeTag[tx.type]}">${typeLabel[tx.type]}</span></td>
+      <td style="font-size:12px;color:var(--text-dim)">${acLabel}</td>
+      <td>${tx.category}</td>
+      <td class="${amtCls}">${prefix}${fmt(tx.amount)}</td>
+      <td style="color:var(--text-muted)">${tx.memo || '—'}</td>
+      ${withActions ? `<td><button class="btn btn-ghost" style="padding:4px 8px;font-size:12px" onclick="openEditTx('${tx.id}')">編輯</button> <button class="btn btn-danger" style="padding:4px 8px;font-size:12px" onclick="deleteTx('${tx.id}')">刪除</button></td>` : ''}
+    </tr>`;
+  }).join('');
+}
+
+// ────────────────────────────────────────────────
+// BUDGET
+// ────────────────────────────────────────────────
+let editingBudgetId = null;
+let budgetTab = 'monthly';
+
+function switchBudgetTab(tab, el) {
+  budgetTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('budget-monthly-list').style.display = tab === 'monthly' ? '' : 'none';
+  document.getElementById('budget-annual-list').style.display  = tab === 'annual'  ? '' : 'none';
+}
+
+function openAddBudget() {
+  editingBudgetId = null;
+  document.getElementById('modal-budget-title').textContent = '新增預算';
+  document.getElementById('budget-amount').value = '';
+  document.getElementById('budget-note').value = '';
+  document.getElementById('budget-period').value = budgetTab;
+  document.getElementById('budget-category').innerHTML =
+    state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('modal-budget').classList.add('open');
+}
+
+function openEditBudget(id) {
+  const b = state.budgets.find(b => b.id === id);
+  if (!b) return;
+  editingBudgetId = id;
+  document.getElementById('modal-budget-title').textContent = '編輯預算';
+  document.getElementById('budget-category').innerHTML =
+    state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('budget-category').value = b.category;
+  document.getElementById('budget-period').value = b.period;
+  document.getElementById('budget-amount').value = b.amount;
+  document.getElementById('budget-note').value = b.note || '';
+  document.getElementById('modal-budget').classList.add('open');
+}
+
+function closeBudgetModal() {
+  document.getElementById('modal-budget').classList.remove('open');
+}
+
+function saveBudget() {
+  const category = document.getElementById('budget-category').value;
+  const period   = document.getElementById('budget-period').value;
+  const amount   = parseFloat(document.getElementById('budget-amount').value);
+  const note     = document.getElementById('budget-note').value.trim();
+  if (!category || isNaN(amount) || amount <= 0) { toast('請填寫類別與金額'); return; }
+  if (editingBudgetId) {
+    const b = state.budgets.find(b => b.id === editingBudgetId);
+    Object.assign(b, { category, period, amount, note });
+  } else {
+    state.budgets.push({ id: Date.now().toString(), category, period, amount, note });
+  }
+  save(); closeBudgetModal(); toast('已儲存');
+  renderBudget();
+}
+
+function deleteBudget(id) {
+  if (!confirm('確定刪除此預算？')) return;
+  state.budgets = state.budgets.filter(b => b.id !== id);
+  save(); toast('已刪除'); renderBudget();
+}
+
+function renderBudget() {
+  ['monthly', 'annual'].forEach(period => {
+    const m = thisMonth();
+    const y = new Date().getFullYear().toString();
+    const budgets = state.budgets.filter(b => b.period === period);
+    const wrap = document.getElementById(`budget-${period}-list`);
+    if (!budgets.length) {
+      wrap.innerHTML = '<div class="empty">尚無預算，點右上角新增</div>'; return;
+    }
+    wrap.innerHTML = budgets.map(b => {
+      const spent = state.transactions.filter(t => {
+        if (t.type !== 'expense' || t.category !== b.category) return false;
+        if (period === 'monthly') return monthOf(t.date) === m;
+        return t.date.startsWith(y);
+      }).reduce((s,t) => s+t.amount, 0);
+      const pct = Math.min(spent / b.amount * 100, 100);
+      const cls = pct < 75 ? 'ok' : pct < 100 ? 'warn' : 'over';
+      const periodLabel = period === 'monthly' ? '本月' : '今年';
+      return `<div class="card" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <span style="font-size:14px;font-weight:600">${b.category}</span>
+            <span class="tag ${period === 'monthly' ? 'tag-monthly' : 'tag-annual'}" style="margin-left:8px">${period === 'monthly' ? '月' : '年'}</span>
+            ${b.note ? `<span style="font-size:12px;color:var(--text-muted);margin-left:6px">${b.note}</span>` : ''}
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="openEditBudget('${b.id}')">編輯</button>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="deleteBudget('${b.id}')">刪除</button>
+          </div>
+        </div>
+        <div class="budget-header">
+          <span class="budget-nums">${periodLabel}已用 ${fmt(spent)}</span>
+          <span class="budget-nums">預算 ${fmt(b.amount)}　剩 ${fmt(b.amount - spent)}</span>
+        </div>
+        <div class="budget-bar" style="height:8px;margin-top:8px">
+          <div class="budget-fill ${cls}" style="width:${pct}%"></div>
+        </div>
+        <div class="budget-note">${pct.toFixed(0)}% 已使用</div>
+      </div>`;
+    }).join('');
+  });
+}
+
+// ────────────────────────────────────────────────
+// SETTINGS
+// ────────────────────────────────────────────────
+function renderSettings() {
+  // Account balance edit
+  document.getElementById('account-settings-list').innerHTML = `
+    <h2 style="font-size:15px;margin-bottom:16px">帳戶餘額（手動設定初始值）</h2>
+    ${state.accounts.map(a => `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <span style="flex:1;font-size:13px">${a.name}</span>
+        <input type="number" id="bal-${a.id}" value="${a.balance}" style="width:140px;text-align:right">
+        <button class="btn btn-ghost" onclick="saveBalance('${a.id}')">更新</button>
+      </div>
+    `).join('')}
+  `;
+
+  // Categories
+  renderCategoryList();
+}
+
+function saveBalance(id) {
+  const val = parseFloat(document.getElementById('bal-' + id).value);
+  if (isNaN(val)) return;
+  state.accounts.find(a => a.id === id).balance = val;
+  save(); toast('餘額已更新');
+}
+
+function renderCategoryList() {
+  document.getElementById('category-list').innerHTML = state.categories.map((c, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="flex:1;font-size:13px">${c}</span>
+      <button class="btn btn-danger" style="padding:3px 8px;font-size:12px" onclick="deleteCategory(${i})">刪除</button>
+    </div>
+  `).join('');
+}
+
+function addCategory() {
+  const val = document.getElementById('new-category').value.trim();
+  if (!val || state.categories.includes(val)) { toast('類別已存在或為空'); return; }
+  state.categories.push(val);
+  document.getElementById('new-category').value = '';
+  save(); renderCategoryList(); toast('已新增');
+}
+
+function deleteCategory(i) {
+  if (!confirm('確定刪除此類別？')) return;
+  state.categories.splice(i, 1);
+  save(); renderCategoryList();
+}
+
+// ────────────────────────────────────────────────
+// EXPORT / CLEAR
+// ────────────────────────────────────────────────
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `finance_${today()}.json`; a.click();
+}
+
+function clearData() {
+  if (!confirm('確定清除所有資料？此動作無法還原')) return;
+  localStorage.removeItem('finance_v1');
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  save(); showSection('overview'); toast('資料已清除');
+}
+
+// ────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────
+renderOverview();
+</script>
+</body>
+</html>
