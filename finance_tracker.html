@@ -348,9 +348,11 @@
       </div>
       <div class="divider"></div>
       <div class="card" style="border-color:var(--red);background:var(--red-dim)">
-        <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px">匯出 / 清除資料</div>
-        <div style="display:flex;gap:8px">
+        <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px">匯出 / 匯入 / 清除資料</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost" onclick="exportData()">📥 匯出 JSON</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()">📤 匯入 JSON</button>
+          <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importData(event)">
           <button class="btn btn-danger" onclick="clearData()">清除所有資料</button>
         </div>
       </div>
@@ -886,6 +888,27 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = `finance_${today()}.json`; a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!confirm('匯入將覆蓋目前所有資料，確定要匯入嗎？')) { e.target.value = ''; return; }
+      state = data;
+      save();
+      renderOverview();
+      showSection('overview');
+      toast('資料已匯入');
+    } catch (err) {
+      alert('檔案格式錯誤，無法匯入');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 function clearData() {
