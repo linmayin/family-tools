@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" sizes="32x32" href="travel_checklist_favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="travel_checklist_favicon-16x16.png">
+<link rel="apple-touch-icon" href="travel_checklist_apple_touch.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="旅行清單">
+<title>旅行攜帶物品清單</title>
+<style>
+  :root {
+    --bg: #f6f3ec;
+    --card: #ffffff;
+    --accent: #b5652b;
+    --accent-dark: #954f1f;
+    --text: #362c22;
+    --muted: #8a7c6c;
+    --line: #ece3d3;
+    --danger: #c0392b;
+    --highlight: #fff2a8;
+    --highlight-border: #e8c93a;
+    --edit: #7a4fb0;
+    --edit-bg: #f1e9fb;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: "Noto Sans TC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    padding-bottom: 60px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+
+  header { text-align:center; margin-bottom: 14px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { font-size: 12.5px; color: var(--muted); }
+
+  .top-bar {
+    display:flex; gap:8px; align-items:center; justify-content:center;
+    background:#fff; border-radius:16px; padding:10px 14px; margin-bottom:14px;
+    box-shadow: 0 4px 16px rgba(120,90,50,0.08);
+    flex-wrap: wrap;
+  }
+  .nights-field { display:flex; align-items:center; gap:6px; font-size:13.5px; }
+  .nights-field input {
+    width: 54px; padding:6px 8px; border-radius:8px; border:1px solid var(--line);
+    font-size:14px; text-align:center; font-family:inherit;
+  }
+  .btn {
+    border:none; border-radius:10px; padding:8px 14px; font-size:13px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition: transform .12s, opacity .15s;
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn-accent { background: var(--accent); color:#fff; }
+  .btn-accent:hover { background: var(--accent-dark); }
+  .btn-ghost { background: var(--line); color: var(--text); }
+  .btn-danger { background: #fbe4e0; color: var(--danger); }
+  .btn-edit { background: var(--edit-bg); color: var(--edit); border: 1px solid #e0cdf5; }
+  .btn-edit.active { background: var(--edit); color:#fff; }
+
+  .mode-banner {
+    display:none;
+    background: var(--edit);
+    color:#fff;
+    text-align:center;
+    font-size:12.5px;
+    padding:8px;
+    border-radius:12px;
+    margin-bottom:12px;
+    font-weight:600;
+  }
+  .mode-banner.show { display:block; }
+
+  .category {
+    background: var(--card);
+    border-radius:16px;
+    padding:14px 16px 12px;
+    margin-bottom:12px;
+    box-shadow: 0 4px 14px rgba(120,90,50,0.06);
+  }
+  .category h2 {
+    font-size:15px; margin:0 0 8px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .category h2 .count {
+    font-size:11.5px; color: var(--muted); font-weight:400;
+  }
+
+  .item-row {
+    display:flex; align-items:center; gap:8px;
+    padding:7px 4px;
+    border-bottom: 1px solid var(--line);
+    font-size:14px;
+  }
+  .item-row:last-of-type { border-bottom:none; }
+  .item-row.highlighted {
+    background: var(--highlight);
+    border-radius:8px;
+    border-bottom: 1px solid var(--highlight);
+    padding-left:8px;
+    box-shadow: inset 0 0 0 1px var(--highlight-border);
+  }
+  .item-row input[type=checkbox] {
+    width:19px; height:19px; accent-color: var(--accent); flex-shrink:0;
+  }
+  .item-name {
+    flex:1; min-width:0; word-break: break-word;
+  }
+  .item-name.checked { color: var(--muted); text-decoration: line-through; }
+  .qty-input {
+    width:44px; padding:4px 4px; border-radius:6px; border:1px solid var(--line);
+    text-align:center; font-size:13px; font-family:inherit; flex-shrink:0;
+  }
+  .icon-btn {
+    border:none; background:transparent; font-size:15px; cursor:pointer; padding:4px;
+    flex-shrink:0; border-radius:6px; line-height:1;
+  }
+  .icon-btn:hover { background: var(--line); }
+  .icon-btn.marked { filter: none; }
+
+  .add-row {
+    display:flex; gap:6px; margin-top:10px;
+  }
+  .add-row input {
+    flex:1; padding:8px 10px; border-radius:8px; border:1px solid var(--line);
+    font-size:13.5px; font-family:inherit; min-width:0;
+  }
+  .add-row button {
+    flex-shrink:0;
+  }
+
+  .note-box {
+    background: #fff6e0;
+    border: 1px solid #f0dca0;
+    border-radius:16px;
+    padding:14px 16px;
+    margin-bottom:14px;
+    font-size:13.5px;
+    line-height:1.7;
+  }
+  .note-box h2 { font-size:14px; margin:0 0 6px; color:#a3781a; }
+  .note-box ul { margin:0; padding-left:1.2em; }
+
+  .bottom-actions {
+    display:flex; gap:10px; margin-top:18px;
+  }
+  .bottom-actions button { flex:1; padding:13px; font-size:14px; }
+
+  .progress-summary {
+    text-align:center; font-size:12.5px; color: var(--muted); margin-bottom: 10px;
+  }
+
+  @media (max-width: 380px) {
+    .item-row { font-size:13px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🧳 旅行攜帶物品清單</h1>
+    <div class="sub">打勾記錄會自動儲存在這台裝置上，離開頁面也不會不見</div>
+  </header>
+
+  <div class="mode-banner" id="modeBanner">✏️ 目前為「編輯範本」模式：新增／刪除項目會永久套用到之後每一次旅行</div>
+
+  <div class="top-bar">
+    <div class="nights-field">
+      🌙 過夜數：<input type="number" id="nightsInput" min="0" value="1">夜
+    </div>
+    <button class="btn btn-accent" id="applyNightsBtn">套用計算衣物件數</button>
+    <button class="btn btn-edit" id="editModeBtn">✏️ 編輯範本模式</button>
+  </div>
+
+  <div class="progress-summary" id="progressSummary"></div>
+
+  <div id="categoriesWrap"></div>
+
+  <div class="note-box" id="noteBox"></div>
+
+  <div class="bottom-actions">
+    <button class="btn btn-danger" id="resetBtn">🔄 旅行結束，重置清單</button>
+  </div>
+</div>
+
+<script>
+const TEMPLATE_KEY = 'travel_template_v1';
+const TRIP_KEY = 'travel_trip_v1';
+
+const DEFAULT_TEMPLATE = {"categories": [{"id": "wear", "title": "穿（出發當天）", "hasQty": false, "items": [{"name": "上衣", "id": "item_1"}, {"name": "褲子", "id": "item_2"}, {"name": "內衣褲", "id": "item_3"}, {"name": "襪子", "id": "item_4"}]}, {"id": "bring_clothes", "title": "衣物（依夜數自動算件數，含備用）", "hasQty": true, "items": [{"name": "上衣", "mode": "perNight", "baseQty": 1, "id": "item_5"}, {"name": "褲子", "mode": "perNight", "baseQty": 1, "id": "item_6"}, {"name": "內衣", "mode": "perNight", "baseQty": 1, "id": "item_7"}, {"name": "內褲", "mode": "perNight", "baseQty": 1, "id": "item_8"}, {"name": "襪子", "mode": "perNight", "baseQty": 1, "id": "item_9"}, {"name": "睡衣", "mode": "fixed", "baseQty": 1, "id": "item_10"}, {"name": "防寒衣", "mode": "fixed", "baseQty": 1, "id": "item_11"}, {"name": "外套", "mode": "fixed", "baseQty": 1, "id": "item_12"}]}, {"id": "toiletries", "title": "盥洗化妝包", "hasQty": false, "items": [{"name": "洗面乳", "id": "item_13"}, {"name": "沐浴乳", "id": "item_14"}, {"name": "洗髮乳", "id": "item_15"}, {"name": "潤髮乳", "id": "item_16"}, {"name": "刮鬍刀", "id": "item_17"}, {"name": "護髮油", "id": "item_18"}, {"name": "鏡子", "id": "item_19"}, {"name": "頸部防曬霜", "id": "item_20"}, {"name": "粉霜", "id": "item_21"}, {"name": "粉撲", "id": "item_22"}, {"name": "卸妝油", "id": "item_23"}, {"name": "化妝水", "id": "item_24"}, {"name": "乳液", "id": "item_25"}, {"name": "牙線", "id": "item_26"}, {"name": "牙間刷", "id": "item_27"}, {"name": "大髮夾", "id": "item_28"}, {"name": "小毛巾", "id": "item_29"}]}, {"id": "toothbrush", "title": "牙刷包", "hasQty": false, "items": [{"name": "牙膏", "id": "item_30"}, {"name": "牙刷", "id": "item_31"}, {"name": "漱口水", "id": "item_32"}, {"name": "沐浴球", "id": "item_33"}, {"name": "電動牙刷", "id": "item_34"}, {"name": "牙刷頭", "id": "item_35"}, {"name": "充電座", "id": "item_36"}, {"name": "大毛巾", "id": "item_37"}]}, {"id": "carry", "title": "隨身物品", "hasQty": false, "items": [{"name": "眼藥水", "id": "item_38"}, {"name": "手機充電線", "id": "item_39"}, {"name": "耳機", "id": "item_40"}, {"name": "粉餅", "id": "item_41"}, {"name": "護脣膏", "id": "item_42"}, {"name": "礦泉水", "id": "item_43"}, {"name": "牙線棒", "id": "item_44"}, {"name": "護手霜", "id": "item_45"}, {"name": "止癢藥", "id": "item_46"}, {"name": "防蚊液", "id": "item_47"}, {"name": "痘痘藥", "id": "item_48"}, {"name": "口內膏", "id": "item_49"}, {"name": "防曬乳", "id": "item_50"}, {"name": "清肺散", "id": "item_51"}]}, {"id": "medicine", "title": "備用藥品", "hasQty": false, "items": [{"name": "降血脂藥", "id": "item_52"}, {"name": "止痛藥", "id": "item_53"}, {"name": "感冒藥", "id": "item_54"}, {"name": "腸胃藥", "id": "item_55"}, {"name": "退燒藥", "id": "item_56"}, {"name": "止咳藥", "id": "item_57"}, {"name": "肌肉鬆弛劑", "id": "item_58"}]}, {"id": "other", "title": "其他", "hasQty": false, "items": [{"name": "指甲刀", "id": "item_59"}, {"name": "斜角刀", "id": "item_60"}, {"name": "髮飾", "id": "item_61"}, {"name": "雨具", "id": "item_62"}, {"name": "紙筆、手冊", "id": "item_63"}, {"name": "零錢", "id": "item_64"}, {"name": "零食", "id": "item_65"}, {"name": "洋傘", "id": "item_66"}, {"name": "遮陽帽", "id": "item_67"}, {"name": "墨鏡", "id": "item_68"}, {"name": "健保卡", "id": "item_69"}, {"name": "暈車藥／防暈帶", "id": "item_70"}, {"name": "平安符／佛珠", "id": "item_71"}, {"name": "拖鞋、室內鞋", "id": "item_72"}, {"name": "眼罩", "id": "item_73"}, {"name": "毛帽", "id": "item_74"}, {"name": "毛襪", "id": "item_75"}, {"name": "口罩（活性碳）", "id": "item_76"}, {"name": "衛生紙／棉", "id": "item_77"}, {"name": "塑膠袋、夾鏈袋", "id": "item_78"}, {"name": "菜瓜布、洗碗精", "id": "item_79"}, {"name": "車上垃圾袋", "id": "item_80"}, {"name": "充電器", "id": "item_81"}, {"name": "行動電源", "id": "item_82"}, {"name": "行動電源充電線", "id": "item_83"}, {"name": "環保餐具", "id": "item_84"}, {"name": "面膜、眼膜", "id": "item_85"}, {"name": "吹風機", "id": "item_86"}, {"name": "自拍棒", "id": "item_87"}, {"name": "泡麵+碗蓋", "id": "item_88"}, {"name": "水壺（戶外教學）", "id": "item_89"}, {"name": "手錶（戶外教學）", "id": "item_90"}, {"name": "薰衣草精油", "id": "item_91"}]}, {"id": "kids", "title": "小孩", "hasQty": false, "items": [{"name": "手錶充電線", "id": "item_92"}, {"name": "散瞳藥", "id": "item_93"}, {"name": "洗髮帽", "id": "item_94"}, {"name": "鼻塞貼布", "id": "item_95"}, {"name": "腹痛精油", "id": "item_96"}, {"name": "墨鏡", "id": "item_97"}]}, {"id": "swim", "title": "玩水包", "hasQty": false, "items": [{"name": "換洗衣物", "id": "item_98"}, {"name": "泳褲", "id": "item_99"}, {"name": "大毛巾", "id": "item_100"}, {"name": "泳鏡", "id": "item_101"}, {"name": "裝濕衣服的塑膠袋", "id": "item_102"}]}], "note": {"title": "露營備註：烏樹林", "lines": ["不用帶拖鞋，那邊有室內拖鞋", "吹風機可以帶自己的，它們的很小不好吹"]}};
+
+function loadTemplate() {
+  const raw = localStorage.getItem(TEMPLATE_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch(e) {}
+  }
+  return JSON.parse(JSON.stringify(DEFAULT_TEMPLATE));
+}
+
+function saveTemplate(tpl) {
+  localStorage.setItem(TEMPLATE_KEY, JSON.stringify(tpl));
+}
+
+function calcPerNightQty(nights) {
+  // 依夜數+1(含備用衣物)
+  return Math.max(nights, 0) + 1;
+}
+
+function freshTripFromTemplate(tpl, nights) {
+  const trip = { nights: nights, categories: {} };
+  tpl.categories.forEach(cat => {
+    trip.categories[cat.id] = cat.items.map(it => {
+      const base = {
+        id: it.id, name: it.name, checked: false, highlighted: false, hidden: false, temp: false
+      };
+      if (cat.hasQty) {
+        base.mode = it.mode;
+        base.baseQty = it.baseQty;
+        base.qty = it.mode === 'perNight' ? calcPerNightQty(nights) : it.baseQty;
+      }
+      return base;
+    });
+  });
+  return trip;
+}
+
+function loadTrip(tpl) {
+  const raw = localStorage.getItem(TRIP_KEY);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed;
+    } catch(e) {}
+  }
+  return freshTripFromTemplate(tpl, 1);
+}
+
+function saveTrip(trip) {
+  localStorage.setItem(TRIP_KEY, JSON.stringify(trip));
+}
+
+let template = loadTemplate();
+let trip = loadTrip(template);
+let editMode = false;
+
+const els = {
+  nightsInput: document.getElementById('nightsInput'),
+  applyNightsBtn: document.getElementById('applyNightsBtn'),
+  editModeBtn: document.getElementById('editModeBtn'),
+  modeBanner: document.getElementById('modeBanner'),
+  categoriesWrap: document.getElementById('categoriesWrap'),
+  noteBox: document.getElementById('noteBox'),
+  resetBtn: document.getElementById('resetBtn'),
+  progressSummary: document.getElementById('progressSummary'),
+};
+
+els.nightsInput.value = trip.nights;
+
+function genId() {
+  return 'item_' + Math.random().toString(36).slice(2, 10);
+}
+
+function render() {
+  els.categoriesWrap.innerHTML = '';
+  let totalItems = 0, totalChecked = 0;
+
+  template.categories.forEach(cat => {
+    const tripItems = trip.categories[cat.id] || [];
+    const visibleItems = editMode ? tripItems : tripItems.filter(i => !i.hidden);
+
+    const catDiv = document.createElement('div');
+    catDiv.className = 'category';
+
+    const h2 = document.createElement('h2');
+    const checkedCount = tripItems.filter(i => i.checked && !i.hidden).length;
+    const totalCount = tripItems.filter(i => !i.hidden).length;
+    h2.innerHTML = `${cat.title} <span class="count">(${checkedCount}/${totalCount})</span>`;
+    catDiv.appendChild(h2);
+
+    totalItems += totalCount;
+    totalChecked += checkedCount;
+
+    visibleItems.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'item-row' + (item.highlighted ? ' highlighted' : '') + (item.hidden ? ' is-hidden' : '');
+      if (item.hidden) row.style.opacity = '0.45';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = item.checked;
+      checkbox.disabled = item.hidden && !editMode ? true : false;
+      checkbox.addEventListener('change', () => {
+        item.checked = checkbox.checked;
+        saveTrip(trip);
+        render();
+      });
+      row.appendChild(checkbox);
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'item-name' + (item.checked ? ' checked' : '');
+      nameSpan.textContent = item.name + (item.hidden ? '（本次已移除）' : '');
+      row.appendChild(nameSpan);
+
+      if (cat.hasQty) {
+        const qtyInput = document.createElement('input');
+        qtyInput.type = 'number';
+        qtyInput.className = 'qty-input';
+        qtyInput.min = '0';
+        qtyInput.value = item.qty;
+        qtyInput.addEventListener('change', () => {
+          item.qty = parseInt(qtyInput.value) || 0;
+          saveTrip(trip);
+        });
+        row.appendChild(qtyInput);
+      }
+
+      const highlightBtn = document.createElement('button');
+      highlightBtn.className = 'icon-btn' + (item.highlighted ? ' marked' : '');
+      highlightBtn.title = '標記：晚上尚未裝入，出發前要放進去';
+      highlightBtn.textContent = item.highlighted ? '🖍️' : '🖊️';
+      highlightBtn.style.opacity = item.highlighted ? '1' : '0.35';
+      highlightBtn.addEventListener('click', () => {
+        item.highlighted = !item.highlighted;
+        saveTrip(trip);
+        render();
+      });
+      row.appendChild(highlightBtn);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'icon-btn';
+      deleteBtn.title = editMode ? '從範本永久刪除' : '這次旅行先不帶（下次還會出現）';
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.addEventListener('click', () => {
+        if (editMode) {
+          const catTpl = template.categories.find(c => c.id === cat.id);
+          catTpl.items = catTpl.items.filter(i => i.id !== item.id);
+          trip.categories[cat.id] = trip.categories[cat.id].filter(i => i.id !== item.id);
+          saveTemplate(template);
+          saveTrip(trip);
+        } else {
+          if (item.temp) {
+            trip.categories[cat.id] = trip.categories[cat.id].filter(i => i.id !== item.id);
+          } else {
+            item.hidden = true;
+          }
+          saveTrip(trip);
+        }
+        render();
+      });
+      row.appendChild(deleteBtn);
+
+      if (item.hidden && editMode === false) {
+        const restoreBtn = document.createElement('button');
+        restoreBtn.className = 'icon-btn';
+        restoreBtn.title = '恢復';
+        restoreBtn.textContent = '↩️';
+        restoreBtn.addEventListener('click', () => {
+          item.hidden = false;
+          saveTrip(trip);
+          render();
+        });
+        row.appendChild(restoreBtn);
+      }
+
+      catDiv.appendChild(row);
+    });
+
+    const addRow = document.createElement('div');
+    addRow.className = 'add-row';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = editMode ? '新增永久項目...' : '新增這次旅行要帶的東西...';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-accent';
+    addBtn.textContent = '＋ 新增';
+    const doAdd = () => {
+      const val = input.value.trim();
+      if (!val) return;
+      const newId = genId();
+      if (editMode) {
+        const catTpl = template.categories.find(c => c.id === cat.id);
+        const newTplItem = { id: newId, name: val };
+        if (cat.hasQty) { newTplItem.mode = 'fixed'; newTplItem.baseQty = 1; }
+        catTpl.items.push(newTplItem);
+        saveTemplate(template);
+
+        const newTripItem = { id: newId, name: val, checked: false, highlighted: false, hidden: false, temp: false };
+        if (cat.hasQty) { newTripItem.mode = 'fixed'; newTripItem.baseQty = 1; newTripItem.qty = 1; }
+        trip.categories[cat.id].push(newTripItem);
+        saveTrip(trip);
+      } else {
+        const newTripItem = { id: newId, name: val, checked: false, highlighted: false, hidden: false, temp: true };
+        if (cat.hasQty) { newTripItem.mode = 'fixed'; newTripItem.baseQty = 1; newTripItem.qty = 1; }
+        trip.categories[cat.id].push(newTripItem);
+        saveTrip(trip);
+      }
+      input.value = '';
+      render();
+    };
+    addBtn.addEventListener('click', doAdd);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doAdd(); });
+    addRow.appendChild(input);
+    addRow.appendChild(addBtn);
+    catDiv.appendChild(addRow);
+
+    els.categoriesWrap.appendChild(catDiv);
+  });
+
+  els.progressSummary.textContent = totalItems > 0
+    ? `已打包 ${totalChecked} / ${totalItems} 項`
+    : '';
+
+  els.noteBox.innerHTML = `<h2>📌 ${template.note.title}</h2>` +
+    '<ul>' + template.note.lines.map(l => `<li>${l}</li>`).join('') + '</ul>';
+}
+
+els.applyNightsBtn.addEventListener('click', () => {
+  const nights = Math.max(parseInt(els.nightsInput.value) || 0, 0);
+  trip.nights = nights;
+  template.categories.forEach(cat => {
+    if (!cat.hasQty) return;
+    trip.categories[cat.id].forEach(item => {
+      if (item.mode === 'perNight') {
+        item.qty = calcPerNightQty(nights);
+      }
+    });
+  });
+  saveTrip(trip);
+  render();
+});
+
+els.editModeBtn.addEventListener('click', () => {
+  editMode = !editMode;
+  els.editModeBtn.classList.toggle('active', editMode);
+  els.editModeBtn.textContent = editMode ? '✅ 完成編輯' : '✏️ 編輯範本模式';
+  els.modeBanner.classList.toggle('show', editMode);
+  render();
+});
+
+els.resetBtn.addEventListener('click', () => {
+  const ok = confirm('確定旅行已經結束，要把清單重置回初始狀態嗎？（打勾、標記、暫時新增的項目都會清除）');
+  if (!ok) return;
+  const nights = trip.nights || 1;
+  trip = freshTripFromTemplate(template, nights);
+  saveTrip(trip);
+  els.nightsInput.value = nights;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
