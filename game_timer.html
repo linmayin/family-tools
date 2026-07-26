@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>遊戲時間管理員</title>
+<link rel="icon" type="image/png" sizes="32x32" href="https://linmayin.github.io/family-tools/game_timer_favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="https://linmayin.github.io/family-tools/game_timer_favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="https://linmayin.github.io/family-tools/game_timer_apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EEF3F6;
+    --card: #FFFFFF;
+    --ink: #2B3A42;
+    --ink-soft: #5B6B74;
+    --green: #3FAE7C;
+    --green-soft: #E4F5EC;
+    --amber: #EFA23F;
+    --amber-soft: #FCEEDA;
+    --red: #E2574C;
+    --red-soft: #FCE4E2;
+    --ring-track: #E3E9ED;
+    --radius: 28px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    font-family:'Noto Sans TC', sans-serif;
+    color:var(--ink);
+    overscroll-behavior:none;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .display-font{ font-family:'Baloo 2','Noto Sans TC',sans-serif; }
+
+  #app{
+    min-height:100vh;
+    min-height:100dvh;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding:24px;
+    transition: background 0.6s ease;
+  }
+  #app.phase-play{ background: linear-gradient(180deg, #EEF3F6 0%, var(--green-soft) 100%); }
+  #app.phase-buffer{ background: linear-gradient(180deg, #EEF3F6 0%, var(--amber-soft) 100%); }
+  #app.phase-locked{ background: var(--red); }
+
+  .eyebrow{
+    font-size:14px; font-weight:700; letter-spacing:0.08em;
+    color:var(--ink-soft); margin-bottom:6px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow .dot{ width:8px; height:8px; border-radius:50%; background:var(--ink-soft); }
+
+  h1.title{
+    font-family:'Baloo 2',sans-serif;
+    font-size:26px; font-weight:800; margin:0 0 28px 0;
+    color:var(--ink); text-align:center;
+  }
+
+  /* --- Ring --- */
+  .ring-wrap{
+    position:relative;
+    width:min(72vw, 320px); height:min(72vw, 320px);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:32px;
+  }
+  svg.ring{ width:100%; height:100%; transform:rotate(-90deg); }
+  .ring-track{ fill:none; stroke:var(--ring-track); stroke-width:18; }
+  .ring-fill{
+    fill:none; stroke-width:18; stroke-linecap:round;
+    transition: stroke-dashoffset 1s linear, stroke 0.6s ease;
+  }
+  .phase-play .ring-fill{ stroke:var(--green); }
+  .phase-buffer .ring-fill{ stroke:var(--amber); }
+
+  .ring-center{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px;
+  }
+  .time-num{
+    font-family:'Baloo 2',sans-serif;
+    font-size:min(15vw, 68px); font-weight:800; line-height:1;
+    font-variant-numeric: tabular-nums;
+    color:var(--ink);
+  }
+  .time-label{
+    font-size:15px; font-weight:700; color:var(--ink-soft);
+  }
+
+  /* --- Buttons --- */
+  .btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700; font-size:19px;
+    border:none; border-radius:20px;
+    padding:18px 40px;
+    cursor:pointer;
+    color:#fff;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.12);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .btn:active{ transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.12); }
+  .btn-start{ background:var(--green); }
+  .btn-ghost{
+    background:transparent; color:var(--ink-soft);
+    box-shadow:none; font-weight:600; font-size:15px;
+    padding:10px 16px;
+  }
+
+  .gear{
+    position:fixed; top:18px; right:18px;
+    width:44px; height:44px; border-radius:50%;
+    background:var(--card); border:none;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    font-size:20px; cursor:pointer;
+    color:var(--ink-soft);
+  }
+
+  .buffer-msg{
+    font-size:16px; font-weight:700; color:var(--amber);
+    text-align:center; margin-top:-16px; margin-bottom:20px;
+  }
+
+  /* --- Locked screen --- */
+  #locked-screen{
+    display:none;
+    position:fixed; inset:0;
+    background:var(--red);
+    color:#fff;
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:32px; z-index:50;
+  }
+  #locked-screen.show{ display:flex; }
+  .lock-icon{ font-size:64px; margin-bottom:16px; }
+  .lock-title{
+    font-family:'Baloo 2',sans-serif; font-size:32px; font-weight:800;
+    margin:0 0 10px 0;
+  }
+  .lock-sub{ font-size:16px; opacity:0.92; margin-bottom:36px; line-height:1.6; max-width:320px; }
+  .lock-unlock{
+    background:rgba(255,255,255,0.16); border:1.5px solid rgba(255,255,255,0.5);
+    color:#fff; font-family:'Noto Sans TC'; font-size:14px; font-weight:500;
+    padding:10px 20px; border-radius:14px; cursor:pointer;
+  }
+
+  /* --- Settings modal --- */
+  .modal-backdrop{
+    display:none; position:fixed; inset:0; background:rgba(20,25,28,0.45);
+    align-items:center; justify-content:center; z-index:100; padding:20px;
+  }
+  .modal-backdrop.show{ display:flex; }
+  .modal{
+    background:var(--card); border-radius:var(--radius);
+    padding:28px 24px; width:100%; max-width:340px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal h2{
+    font-family:'Baloo 2',sans-serif; font-size:20px; margin:0 0 18px 0;
+  }
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:13px; font-weight:700; color:var(--ink-soft); margin-bottom:6px; }
+  .field input{
+    width:100%; padding:12px 14px; border-radius:12px;
+    border:1.5px solid var(--ring-track); font-size:16px;
+    font-family:'Noto Sans TC'; color:var(--ink);
+  }
+  .field input:focus{ outline:2px solid var(--green); border-color:var(--green); }
+  .modal-actions{ display:flex; gap:10px; margin-top:20px; }
+  .modal-actions .btn{ flex:1; padding:13px 0; font-size:15px; box-shadow:none; }
+  .btn-cancel{ background:var(--ring-track); color:var(--ink-soft); }
+  .btn-save{ background:var(--green); }
+  .error-msg{ color:var(--red); font-size:13px; margin-top:-8px; margin-bottom:12px; display:none; }
+</style>
+</head>
+<body>
+
+<button class="gear" id="gearBtn" aria-label="家長設定">⚙︎</button>
+
+<div id="app" class="phase-idle">
+  <div class="eyebrow" id="eyebrow"><span class="dot"></span><span id="eyebrowText">準備開始</span></div>
+  <h1 class="title" id="titleText">遊戲時間管理員</h1>
+
+  <div class="ring-wrap">
+    <svg class="ring" viewBox="0 0 200 200">
+      <circle class="ring-track" cx="100" cy="100" r="88"></circle>
+      <circle class="ring-fill" id="ringFill" cx="100" cy="100" r="88"
+        stroke-dasharray="552.9" stroke-dashoffset="0"></circle>
+    </svg>
+    <div class="ring-center">
+      <div class="time-num" id="timeNum">10:00</div>
+      <div class="time-label" id="timeLabel">分鐘</div>
+    </div>
+  </div>
+
+  <div class="buffer-msg" id="bufferMsg" style="display:none;">快收心囉,準備結束遊戲!</div>
+
+  <button class="btn btn-start" id="startBtn">開始遊戲</button>
+  <button class="btn btn-ghost" id="resetBtn" style="display:none;">重新開始(需密碼)</button>
+</div>
+
+<!-- Locked full screen -->
+<div id="locked-screen">
+  <div class="lock-icon">⏰</div>
+  <div class="lock-title display-font">時間到囉!</div>
+  <div class="lock-sub">遊戲時間結束,請把 iPad 交給爸爸媽媽 🙂</div>
+  <button class="lock-unlock" id="unlockBtn">家長解鎖</button>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <h2 class="display-font">家長設定</h2>
+    <div class="field">
+      <label for="pwInput">密碼</label>
+      <input type="password" id="pwInput" inputmode="numeric" placeholder="輸入密碼">
+    </div>
+    <div class="error-msg" id="pwError">密碼不正確</div>
+    <div class="field">
+      <label for="playMinInput">遊戲時間(分鐘)</label>
+      <input type="number" id="playMinInput" min="1" max="120">
+    </div>
+    <div class="field">
+      <label for="bufferMinInput">緩衝提醒時間(分鐘)</label>
+      <input type="number" id="bufferMinInput" min="0" max="30">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="modalCancel">取消</button>
+      <button class="btn btn-save" id="modalSave">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'gameTimerState_v1';
+  const SETTINGS_KEY = 'gameTimerSettings_v1';
+  const DEFAULT_PASSWORD = 'jjj';
+
+  let settings = { playMin: 10, bufferMin: 3, password: DEFAULT_PASSWORD };
+  let state = { phase: 'idle', endTime: null }; // phase: idle | play | buffer | locked
+
+  const app = document.getElementById('app');
+  const eyebrowText = document.getElementById('eyebrowText');
+  const titleText = document.getElementById('titleText');
+  const timeNum = document.getElementById('timeNum');
+  const timeLabel = document.getElementById('timeLabel');
+  const bufferMsg = document.getElementById('bufferMsg');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const ringFill = document.getElementById('ringFill');
+  const lockedScreen = document.getElementById('locked-screen');
+  const unlockBtn = document.getElementById('unlockBtn');
+  const gearBtn = document.getElementById('gearBtn');
+  const settingsModal = document.getElementById('settingsModal');
+  const pwInput = document.getElementById('pwInput');
+  const pwError = document.getElementById('pwError');
+  const playMinInput = document.getElementById('playMinInput');
+  const bufferMinInput = document.getElementById('bufferMinInput');
+  const modalCancel = document.getElementById('modalCancel');
+  const modalSave = document.getElementById('modalSave');
+
+  const RING_CIRC = 552.9;
+  let wakeLock = null;
+  let audioCtx = null;
+  let tickInterval = null;
+
+  function loadSettings(){
+    try{
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if(raw){ settings = Object.assign(settings, JSON.parse(raw)); }
+    }catch(e){}
+  }
+  function saveSettings(){
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){ state = JSON.parse(raw); }
+    }catch(e){}
+  }
+  function saveState(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function beep(freq, duration, delay){
+    delay = delay || 0;
+    setTimeout(()=>{
+      try{
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+      }catch(e){}
+    }, delay);
+  }
+  function chime(){ beep(880,0.35,0); beep(1175,0.4,180); }
+  function alarm(){
+    beep(660,0.3,0); beep(660,0.3,350); beep(660,0.3,700);
+    if(navigator.vibrate) navigator.vibrate([300,150,300,150,300]);
+  }
+
+  async function requestWakeLock(){
+    try{
+      if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); }
+    }catch(e){}
+  }
+  function releaseWakeLock(){
+    if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock = null; }
+  }
+
+  function fmt(sec){
+    const m = Math.floor(sec/60), s = sec%60;
+    return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
+
+  function setPhaseUI(phase){
+    app.className = 'phase-' + phase;
+    lockedScreen.classList.toggle('show', phase === 'locked');
+    bufferMsg.style.display = (phase === 'buffer') ? 'block' : 'none';
+    startBtn.style.display = (phase === 'idle') ? 'inline-block' : 'none';
+    resetBtn.style.display = (phase === 'play' || phase === 'buffer') ? 'inline-block' : 'none';
+    gearBtn.style.display = (phase === 'locked') ? 'none' : 'flex';
+
+    if(phase === 'idle'){
+      eyebrowText.textContent = '準備開始';
+      titleText.textContent = '遊戲時間管理員';
+      timeLabel.textContent = '分鐘';
+      timeNum.textContent = String(settings.playMin).padStart(2,'0') + ':00';
+      ringFill.style.strokeDashoffset = 0;
+    } else if(phase === 'play'){
+      eyebrowText.textContent = '遊戲中';
+      titleText.textContent = '好好玩,盡情享受吧!';
+      timeLabel.textContent = '倒數中';
+    } else if(phase === 'buffer'){
+      eyebrowText.textContent = '收心時間';
+      titleText.textContent = '快收心囉';
+      timeLabel.textContent = '準備結束';
+    } else if(phase === 'locked'){
+      releaseWakeLock();
+    }
+  }
+
+  function tick(){
+    if(state.phase !== 'play' && state.phase !== 'buffer'){ return; }
+    const remainMs = state.endTime - Date.now();
+    const remainSec = Math.max(0, Math.ceil(remainMs/1000));
+    const totalSec = (state.phase === 'play' ? settings.playMin : settings.bufferMin) * 60;
+    const ratio = totalSec > 0 ? remainSec/totalSec : 0;
+    timeNum.textContent = fmt(remainSec);
+    ringFill.style.strokeDashoffset = String(RING_CIRC * (1 - ratio));
+
+    if(remainSec <= 0){
+      if(state.phase === 'play'){
+        if(settings.bufferMin > 0){
+          chime();
+          state.phase = 'buffer';
+          state.endTime = Date.now() + settings.bufferMin*60*1000;
+          saveState();
+          setPhaseUI('buffer');
+        } else {
+          finishToLocked();
+        }
+      } else if(state.phase === 'buffer'){
+        finishToLocked();
+      }
+    }
+  }
+
+  function finishToLocked(){
+    alarm();
+    state.phase = 'locked';
+    state.endTime = null;
+    saveState();
+    setPhaseUI('locked');
+  }
+
+  function startTimer(){
+    state.phase = 'play';
+    state.endTime = Date.now() + settings.playMin*60*1000;
+    saveState();
+    setPhaseUI('play');
+    requestWakeLock();
+    tick();
+  }
+
+  function resumeFromState(){
+    if(state.phase === 'play' || state.phase === 'buffer'){
+      const totalMin = state.phase === 'play' ? settings.playMin : settings.bufferMin;
+      // If endTime already passed while app was closed, resolve immediately
+      setPhaseUI(state.phase);
+      requestWakeLock();
+      tick();
+    } else if(state.phase === 'locked'){
+      setPhaseUI('locked');
+    } else {
+      setPhaseUI('idle');
+    }
+  }
+
+  function askPassword(callback){
+    pwInput.value = '';
+    pwError.style.display = 'none';
+    playMinInput.value = settings.playMin;
+    bufferMinInput.value = settings.bufferMin;
+    settingsModal.classList.add('show');
+    settingsModal.dataset.mode = 'settings';
+    settingsModal._callback = callback;
+  }
+
+  gearBtn.addEventListener('click', ()=>{
+    settingsModal.querySelector('.field:nth-child(3)').style.display = 'block';
+    settingsModal.querySelector('.field:nth-child(4)').style.display = 'block';
+    askPassword(null);
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    settingsModal.querySelector('.field:nth-child(3)').style.display = 'none';
+    settingsModal.querySelector('.field:nth-child(4)').style.display = 'none';
+    askPassword(()=>{
+      state.phase = 'idle';
+      state.endTime = null;
+      saveState();
+      setPhaseUI('idle');
+    });
+  });
+
+  unlockBtn.addEventListener('click', ()=>{
+    settingsModal.querySelector('.field:nth-child(3)').style.display = 'none';
+    settingsModal.querySelector('.field:nth-child(4)').style.display = 'none';
+    askPassword(()=>{
+      state.phase = 'idle';
+      state.endTime = null;
+      saveState();
+      setPhaseUI('idle');
+    });
+  });
+
+  modalCancel.addEventListener('click', ()=>{
+    settingsModal.classList.remove('show');
+  });
+
+  modalSave.addEventListener('click', ()=>{
+    if(pwInput.value !== settings.password){
+      pwError.style.display = 'block';
+      return;
+    }
+    const showingTimes = settingsModal.querySelector('.field:nth-child(3)').style.display !== 'none';
+    if(showingTimes){
+      const pm = parseInt(playMinInput.value, 10);
+      const bm = parseInt(bufferMinInput.value, 10);
+      if(pm > 0) settings.playMin = pm;
+      if(bm >= 0) settings.bufferMin = bm;
+      saveSettings();
+      if(state.phase === 'idle'){ setPhaseUI('idle'); }
+    }
+    settingsModal.classList.remove('show');
+    if(typeof settingsModal._callback === 'function'){ settingsModal._callback(); }
+  });
+
+  startBtn.addEventListener('click', startTimer);
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && (state.phase==='play'||state.phase==='buffer')){
+      requestWakeLock();
+      tick();
+    }
+  });
+
+  loadSettings();
+  loadState();
+  resumeFromState();
+  tickInterval = setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
